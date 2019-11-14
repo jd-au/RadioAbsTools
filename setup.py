@@ -23,9 +23,9 @@ def get_version():
     return RadioAbsTools.__version__
 
 
-reqs = ['numpy>=1.10',
+reqs = ['numpy>=1.12',
         'scipy>=0.16',
-        'astropy>=3.0']
+        'astropy>=2.0']
 
 setup(
     name="RadioAbsTools",
