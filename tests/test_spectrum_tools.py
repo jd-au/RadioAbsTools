@@ -3,6 +3,9 @@
 # Author James Dempsey
 # Date 16 Nov 2019
 
+import matplotlib
+matplotlib.use('agg')
+
 from RadioAbsTools import spectrum_tools
 
 
