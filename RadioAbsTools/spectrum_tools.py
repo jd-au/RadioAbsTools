@@ -66,6 +66,15 @@ def plot_absorption_spectrum(velocity, optical_depth, filename, title, con_start
 
 
 def calc_rating(opacity_range, max_s_max_n, continuum_sd):
+    """
+    Calculates the Brown et al 2014 (2014ApJS..211...29B) quality rating for a spectrum. Note that two tests, the
+    absorption uncertainty envelope and number of channels of emission are not currently included.
+
+    :param opacity_range: The range of exp(-tau) values.
+    :param max_s_max_n: The ratio of maximum signal to maximum noise.
+    :param continuum_sd: standard deviation of absorpton in off-line channels
+    :return: A quality rating from A to D
+    """
     rating_codes = 'ABCDEF'
     rating = 0
 
