@@ -18,14 +18,15 @@ def read(fname):
 
 
 def get_version():
-    """Get the version number of AegeanTools"""
+    """Get the version number of RadioAbsTools"""
     import RadioAbsTools
     return RadioAbsTools.__version__
 
 
-reqs = ['numpy>=1.10',
+reqs = ['numpy>=1.12',
         'scipy>=0.16',
-        'astropy>=3.0']
+        'astropy>=2.0',
+        'matplotlib>=2.2.3']
 
 setup(
     name="RadioAbsTools",
@@ -39,7 +40,7 @@ setup(
     packages=['RadioAbsTools'],
     install_requires=reqs,
     #scripts=[],
-    #data_files=[('AegeanTools', [os.path.join(data_dir, 'MOC.fits')]) ],
+    #data_files=[('RadioAbsTools', [os.path.join(data_dir, 'MOC.fits')]) ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'nose']
 )
