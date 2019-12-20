@@ -2,27 +2,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def get_mean_continuum(spectrum, continuum_start_vel, continuum_end_vel):
+def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel):
     """
     Calculate the mean of the continuum values. This is based on precalculated regions where there is no gas expected.
-    :param spectrum: The spectrum to be analysed, should be a numpy array of
-        plane, velocity and flux values.
+    :param velocity: The velocity values of the spectrum to be analysed (in m/s).
+    :param flux: The flux values of the spectrum to be analysed.
     :param continuum_start_vel: The lower bound of the continuum velocity range (in m/s)
     :param continuum_end_vel: The upper bound of the continuum velocity range (in m/s)
-    :return: A pair of float which is the mean continuum flux and the standard deviation of the flux.
+    :return: A pair of float which is the mean continuum flux and the standard deviation of the optical depth.
     """
 
-    continuum_range = np.where(continuum_start_vel < spectrum.velocity)
+    continuum_range = np.where(continuum_start_vel < velocity)
     if len(continuum_range) ==0:
-        return None, None, continuum_start_vel, continuum_end_vel
+        return None, None
 
     bin_start = continuum_range[0][0]
-    continuum_range = np.where(spectrum.velocity < continuum_end_vel)
+    continuum_range = np.where(velocity < continuum_end_vel)
     bin_end = continuum_range[0][-1]
 
     print("Using bins %d to %d (velocity range %d to %d) out of %d" % (
-        bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(spectrum.velocity)))
-    continuum_sample = spectrum.flux[bin_start:bin_end]
+        bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(velocity)))
+    continuum_sample = flux[bin_start:bin_end+1]
     # print ("...gave sample of", continuum_sample)
     mean_cont = np.mean(continuum_sample)
     sd_cont = np.std(continuum_sample/mean_cont)
