@@ -3,6 +3,8 @@
 # Author James Dempsey
 # Date 16 Nov 2019
 
+from __future__ import print_function, division
+
 import matplotlib
 matplotlib.use('agg')
 import numpy as np
