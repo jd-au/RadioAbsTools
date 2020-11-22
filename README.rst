@@ -6,6 +6,8 @@ Analysing Radio Astronomy Absorption Spectra
 RadioAbsTools is a suite of tools for working with radio astronomy absorption spectra.
 It is written with neutral hydrogen (HI) spectra in mind but should be adaptable to other lines.
 
+![Python package](https://github.com/jd-au/RadioAbsTools/workflows/Python%20package/badge.svg)
+
 Installation and Requirements
 -----------------------------
 
@@ -52,7 +54,14 @@ spectrum_tools.py
         'Sample Spectrum', 1000, 5000, sigma_opacity)
     rating, opacity_range, max_s_max_n = spectrum_tools.rate_spectrum(opacity, spec_sd)
 
+Testing
+-------
 
+This module uses pytest for unit testing. To run the tests, use
+
+.. code:: bash
+
+    pytest
 
 
 
