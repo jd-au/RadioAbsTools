@@ -163,8 +163,8 @@ def point_in_ellipse(origin, point, a, b, pa_rad, verbose=False):
         print ('point relative to ellipse centre angle:{} deg radius:{:.4f}" maj:{:.2f}" min:{:.2f}"'.format(math.degrees(diff_angle), radius*3600, 
                 major*3600, minor*3600))
     
-    a_deg = a / 3600
-    b_deg = b / 3600
+    a_deg = a / 3600.0
+    b_deg = b / 3600.0
 
     # Calc distance from origin relative to a and b
     dist = math.sqrt((major / a_deg) ** 2 + (minor / b_deg) ** 2)

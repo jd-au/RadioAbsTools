@@ -175,7 +175,7 @@ def test_get_weighting_array():
     assert np.allclose(weights[data_slice == 2], 0.142857)
     assert np.allclose(weights[data_slice == 1], 0.035714)
 
-    data[6,:,:] =  math.nan
+    data[6,:,:] =  np.nan
     weights = cube_tools.get_weighting_array(data, velocities, 60*(u.km/u.s).to(u.m/u.s), 70*(u.km/u.s).to(u.m/u.s))
     assert data_slice.shape == weights.shape
     assert round(np.sum(weights),3) == 1
