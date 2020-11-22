@@ -1,3 +1,5 @@
 .idea
 RadioAbsTools.egg-info
 RadioAbsTools/__pycache__
+*.pyc
+.eggs

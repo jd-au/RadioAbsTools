@@ -4,6 +4,8 @@ import os
 from astropy.coordinates import SkyCoord, Angle
 from astropy.io import fits, votable
 from astropy.wcs import WCS
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse, Rectangle
 import numpy as np
 import numpy.core.records as rec
 
@@ -13,7 +15,7 @@ class IslandRange(object):
         self.isle_id = isle_id
 
 
-def read_sources(filename):
+def read_sources(filename, min_sn=10, min_flux=0.02):
     print ("Extracting sources from " + filename)
     sources = []
 
@@ -33,7 +35,7 @@ def read_sources(filename):
         sn = flux / rms
         print ("Found source %s at %.4f, %.4f with flux %.4f and rms of %.4f "
                "giving S/N of %.4f" % (id, ra, dec, flux, rms, sn))
-        if sn > 10 and flux > 0.02:
+        if sn > min_sn and flux > min_flux:
             src = dict(zip(results.dtype.names,row))
             src['id'] = id
             src['sn'] = sn
@@ -126,7 +128,7 @@ def get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel
     # print(data.shape)
     continuum_sample = data[bin_start:bin_end, :, :]
     # print ("...gave sample of", continuum_sample)
-    mean_cont = np.mean(continuum_sample, axis=0)
+    mean_cont = np.nanmean(continuum_sample, axis=0)
     mean_sq = mean_cont ** 2
     sum_sq = np.sum(mean_sq)
     weighting = mean_sq / sum_sq
@@ -134,58 +136,106 @@ def get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel
     return weighting
 
 
-def point_in_ellipse(origin, point, a, b, pa_rad):
-    # Convert point to be in plane of the ellipse
-    p_ra_dist = point.icrs.ra.degree - origin.icrs.ra.degree
+def point_in_ellipse(origin, point, a, b, pa_rad, verbose=False):
+    """
+    Identify if the point is inside the ellipse.
+
+    :param origin A SkyCoord defining the centre of the ellipse.
+    :param point A SkyCoord defining the point to be checked.
+    :param a The semi-major axis in arcsec of the ellipse
+    :param b The semi-minor axis in arcsec of the ellipse
+    :param pa_rad The position angle of the ellipse. This is the angle of the major axis measured in radians East of 
+                   North (or CCW from the y axis).
+    """
+    # Convert point to be in plane of the ellipse, accounting for distortions at high declinations
+    p_ra_dist = (point.icrs.ra.degree - origin.icrs.ra.degree)* math.cos(origin.icrs.dec.rad)
     p_dec_dist = point.icrs.dec.degree - origin.icrs.dec.degree
-    x = p_ra_dist * math.cos(pa_rad) + p_dec_dist * math.sin(pa_rad)
-    y = - p_ra_dist * math.sin(pa_rad) + p_dec_dist * math.cos(pa_rad)
 
-    a_deg = a / 3600
-    b_deg = a / 3600
+    # Calculate the angle and radius of the test opoint relative to the centre of the ellipse
+    # Note that we reverse the ra direction to reflect the CCW direction
+    radius = math.sqrt(p_ra_dist**2 + p_dec_dist**2)
+    diff_angle = (math.pi/2 + pa_rad) if p_dec_dist == 0 else math.atan((-1*p_ra_dist) / p_dec_dist) - pa_rad
 
-    # Calc distance from origin relative to a/b
-    dist = math.sqrt((x / a_deg) ** 2 + (y / b_deg) ** 2)
-    # print("Point %s is %f from ellipse %f, %f, %f at %s." % (point, dist, a, b, math.degrees(pa_rad), origin))
-    return dist <= 1.0
+    # Obtain the point position in terms of the ellipse major and minor axes
+    minor = radius * math.sin(diff_angle)
+    major = radius * math.cos(diff_angle)
+    if verbose:
+        print ('point relative to ellipse centre angle:{} deg radius:{:.4f}" maj:{:.2f}" min:{:.2f}"'.format(math.degrees(diff_angle), radius*3600, 
+                major*3600, minor*3600))
+    
+    a_deg = a / 3600.0
+    b_deg = b / 3600.0
+
+    # Calc distance from origin relative to a and b
+    dist = math.sqrt((major / a_deg) ** 2 + (minor / b_deg) ** 2)
+    if verbose:
+        print("Point %s is %f from ellipse %f, %f, %f at %s." % (point, dist, a, b, math.degrees(pa_rad), origin))
+    return round(dist,3) <= 1.0
 
 
-def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, continuum_end_vel):
+def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, continuum_end_vel, radius=None, plot_weight_path=None):
     """
     Calculate the integrated spectrum of the component.
     :param image: The image's data array
     :param w: The image's world coordinate system definition
-    :param src: The details of the component being processed
+    :param src: The details of the component being processed, must have ra, dec, a, b, pa and comp_name keys
     :param velocities: A numpy array of velocity values in m/s
     :param continuum_start_vel: The lower bound of the continuum velocity range (in m/s)
     :param continuum_end_vel: The upper bound of the continuum velocity range (in m/s)
+    :param radius: The radius of the box around the source centre where data will be checked for membership of the 
+        source ellipse. Default is to use the semi-major axis of the source.
+    :param plot_weight_path: The path to which diagnostic plots are output. Default is not to output plots.
     :return: An array of average flux/pixel across the component at each velocity step
     """
     pix = w.wcs_world2pix(src['ra'], src['dec'], 0, 0, 1)
     x_coord = int(np.round(pix[0])) - 1  # 266
     y_coord = int(np.round(pix[1])) - 1  # 197
+    if not radius:
+        radius = math.ceil(src['a'])
     #print("Translated %.4f, %.4f to %d, %d" % (
     #    src['ra'], src['dec'], x_coord, y_coord))
-    radius = 2
+    print (w)
     y_min = y_coord - radius
     y_max = y_coord + radius
     x_min = x_coord - radius
     x_max = x_coord + radius
     data = np.copy(image[0, :, y_min:y_max+1, x_min:x_max+1])
+    if plot_weight_path:
+        # non wcs plot
+        fig, ax = plt.subplots(1, 1, figsize=(9, 3))
+        ax.imshow(np.sum(data, axis=0), origin='lower')
+        plt.title(src['comp_name'])
+        fname = plot_weight_path + '/'+ src['comp_name'] + '_data.png'
+        print ('Plotting data to ' + fname) 
+        plt.savefig(fname, bbox_inches='tight')
+        plt.close()
+
+        # wcs plot
+        plt.subplot(projection=w.celestial)
+        plt.imshow(image[0,10,:,:], origin='lower')
+        plt.grid(color='white', ls='solid')
+        fname = plot_weight_path + '/'+ src['comp_name'] + '_image_wcs.png'
+        print ('Plotting data to ' + fname) 
+        plt.savefig(fname, bbox_inches='tight')
+        plt.close()
+
 
     origin = SkyCoord(src['ra'], src['dec'], frame='icrs', unit="deg")
     pa_rad = math.radians(src['pa'])
     total_pixels = (y_max-y_min +1) * (x_max-x_min +1)
     outside_pixels = 0
-    for i in range(x_min, x_max+1):
-        for j in range(y_min, y_max+1):
-            eq_pos = w.wcs_pix2world(i+1, j+1, 0, 0, 1)
+    for x in range(x_min, x_max+1):
+        for y in range(y_min, y_max+1):
+            eq_pos = w.wcs_pix2world(x, y, 0, 0, 0)
             point = SkyCoord(eq_pos[0], eq_pos[1], frame='icrs', unit="deg")
-            if not point_in_ellipse(origin, point, src['a'], src['b'], pa_rad):
-                data[:, i-x_min, j-y_min] = 0
+            in_ellipse = point_in_ellipse(origin, point, src['a'], src['b'], pa_rad)
+            if not in_ellipse:
+                data[:, y-y_min, x-x_min] = 0
                 outside_pixels += 1
-    #print("Found {} pixels out of {} inside the component {} at {} {}".format(total_pixels - outside_pixels, total_pixels,
-    #                                                                   src['id'],
+            print (point.ra, point.dec, x, y, in_ellipse)
+
+    # print("Found {} pixels out of {} inside the component {} at {} {}".format(total_pixels - outside_pixels, total_pixels,
+    #                                                                   src['comp_name'],
     #                                                                   point.galactic.l.degree,
     #                                                                   point.galactic.b.degree))
     weighting = get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel)
@@ -195,6 +245,16 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
         print ("Error: No data for component!")
     else:
         integrated /= inside_pixels
+
+    if plot_weight_path:
+        fig, ax = plt.subplots(1, 1, figsize=(9, 3))
+        ax.imshow(weighting, origin='lower')
+        plt.title(src['comp_name'])
+        fname = plot_weight_path + '/'+ src['comp_name'] + '_weights.png'
+        print ('Plotting weights to ' + fname) 
+        print ('Ellipse ra={} dec={} pa={:.03f} deg {:.03f}pi rad'.format(src['ra'], src['dec'], src['pa'], pa_rad/math.pi))
+        plt.savefig(fname, bbox_inches='tight')
+        plt.close()
 
     return integrated
 
