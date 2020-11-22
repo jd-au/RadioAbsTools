@@ -1,12 +1,12 @@
-
+.. image:: https://github.com/jd-au/RadioAbsTools/workflows/Python%20package/badge.svg
+   :alt: Python package status
+   
 ============================================
 Analysing Radio Astronomy Absorption Spectra
 ============================================
 
 RadioAbsTools is a suite of tools for working with radio astronomy absorption spectra.
 It is written with neutral hydrogen (HI) spectra in mind but should be adaptable to other lines.
-
-![Python package](https://github.com/jd-au/RadioAbsTools/workflows/Python%20package/badge.svg)
 
 Installation and Requirements
 -----------------------------
