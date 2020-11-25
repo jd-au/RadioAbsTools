@@ -154,7 +154,7 @@ def point_in_ellipse(origin, point, a, b, pa_rad, verbose=False):
     # Calculate the angle and radius of the test opoint relative to the centre of the ellipse
     # Note that we reverse the ra direction to reflect the CCW direction
     radius = math.sqrt(p_ra_dist**2 + p_dec_dist**2)
-    diff_angle = (math.pi/2 + pa_rad) if p_dec_dist == 0 else math.atan((-1*p_ra_dist) / p_dec_dist) - pa_rad
+    diff_angle = (math.pi/2 + pa_rad) if p_dec_dist == 0 else math.atan(p_ra_dist / p_dec_dist) - pa_rad
 
     # Obtain the point position in terms of the ellipse major and minor axes
     minor = radius * math.sin(diff_angle)
@@ -187,6 +187,8 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     :param plot_weight_path: The path to which diagnostic plots are output. Default is not to output plots.
     :return: An array of average flux/pixel across the component at each velocity step
     """
+    if plot_weight_path:
+        print ("getting spectrum for source " + str(src))
     pix = w.wcs_world2pix(src['ra'], src['dec'], 0, 0, 1)
     x_coord = int(np.round(pix[0])) - 1  # 266
     y_coord = int(np.round(pix[1])) - 1  # 197
@@ -232,7 +234,7 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
             if not in_ellipse:
                 data[:, y-y_min, x-x_min] = 0
                 outside_pixels += 1
-            print (point.ra, point.dec, x, y, in_ellipse)
+            #print (point.ra, point.dec, x, y, in_ellipse)
 
     # print("Found {} pixels out of {} inside the component {} at {} {}".format(total_pixels - outside_pixels, total_pixels,
     #                                                                   src['comp_name'],

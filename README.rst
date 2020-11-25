@@ -1,4 +1,5 @@
 .. image:: https://github.com/jd-au/RadioAbsTools/workflows/Python%20package/badge.svg
+   :target: https://github.com/jd-au/RadioAbsTools/actions
    :alt: Python package status
    
 ============================================

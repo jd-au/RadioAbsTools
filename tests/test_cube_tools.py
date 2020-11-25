@@ -14,7 +14,7 @@ import numpy as np
 from RadioAbsTools import cube_tools
 
 def _pixel_in_ellipse(ellipse_centre, x, y, a, b, pa, dec_offset=0*u.deg, expected=True):
-    point  = SkyCoord((19-x)*u.arcsec, y*u.arcsec+dec_offset)
+    point  = SkyCoord((19-x)*u.arcsec, (19-y)*u.arcsec+dec_offset)
 
     result =  cube_tools.point_in_ellipse(ellipse_centre, point, a, b, pa)
     if expected is not None: # and expected != result:
@@ -34,7 +34,7 @@ def _plot_grid(ellipse_centre, a, b, pa, dec_offset=0*u.deg):
 
 def test_point_in_ellipse_vertical():
     # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
-    ellipse_centre = SkyCoord(9*u.arcsec, 10*u.arcsec)
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec)
     a = 6 # arcsec
     b = 3 # arcsec
     pa = 0*u.deg.to(u.rad) # rad
@@ -54,7 +54,7 @@ def test_point_in_ellipse_vertical():
 
 def test_point_in_ellipse_horizontal():
     # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
-    ellipse_centre = SkyCoord(9*u.arcsec, 10*u.arcsec)
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec)
     a = 6 # arcsec
     b = 3 # arcsec
     pa = 90*u.deg.to(u.rad) # rad
@@ -76,7 +76,7 @@ def test_point_in_ellipse_horizontal():
 
 def test_point_in_ellipse_diagonal():
     # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
-    ellipse_centre = SkyCoord(9*u.arcsec, 10*u.arcsec)
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec)
     a = 6 # arcsec
     b = 3 # arcsec
     pa = 45*u.deg.to(u.rad) # rad 
@@ -98,7 +98,7 @@ def test_point_in_ellipse_diagonal():
 
 def test_point_in_ellipse_acute():
     # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
-    ellipse_centre = SkyCoord(9*u.arcsec, 10*u.arcsec)
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec)
     a = 6 # arcsec
     b = 3 # arcsec
     pa = 20*u.deg.to(u.rad) # rad 
@@ -117,11 +117,32 @@ def test_point_in_ellipse_acute():
     assert not _pixel_in_ellipse(ellipse_centre, 9, 4, a, b, pa, expected=False), "Above ellipse should be outside"
     assert not _pixel_in_ellipse(ellipse_centre, 11, 16, a, b, pa, expected=False), "Below ellipse should be outside"
 
+def test_point_in_ellipse_obtuse():
+    # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec)
+    a = 6 # arcsec
+    b = 3 # arcsec
+    pa = 160*u.deg.to(u.rad) # rad 
+
+    _plot_grid(ellipse_centre, a, b, pa)
+
+    assert _pixel_in_ellipse(ellipse_centre, 10, 10, a, b, pa), "Centre should be in ellipse"
+    assert _pixel_in_ellipse(ellipse_centre, 12, 5, a, b, pa), "Top-right of ellipse should be inside"
+    assert _pixel_in_ellipse(ellipse_centre, 8, 14, a, b, pa), "Bottom-left of ellipse should be inside"
+    assert _pixel_in_ellipse(ellipse_centre, 7, 10, a, b, pa), "Left of ellipse should be inside"
+    assert _pixel_in_ellipse(ellipse_centre, 12, 10, a, b, pa), "Right of ellipse should be inside"
+    assert not _pixel_in_ellipse(ellipse_centre, 3, 10, a, b, pa, expected=False), "Top-right mirror of ellipse should be outside"
+    assert not _pixel_in_ellipse(ellipse_centre, 17, 10, a, b, pa, expected=False), "Bottom-left mirror of ellipse should be outside"
+    assert not _pixel_in_ellipse(ellipse_centre, 10, 4, a, b, pa, expected=False), "Above ellipse should be outside"
+    assert not _pixel_in_ellipse(ellipse_centre, 10, 16, a, b, pa, expected=False), "Above ellipse should be outside"
+    assert not _pixel_in_ellipse(ellipse_centre, 9, 4, a, b, pa, expected=False), "Above ellipse should be outside"
+    assert not _pixel_in_ellipse(ellipse_centre, 11, 16, a, b, pa, expected=False), "Below ellipse should be outside"
+
 
 def test_point_in_ellipse_vertical_high_dec():
     # Define an ellipse centred at cell 10,10 in a 20x20 arcsec grid at low declination
     dec_offset = -70*u.deg
-    ellipse_centre = SkyCoord(9*u.arcsec, 10*u.arcsec+dec_offset)
+    ellipse_centre = SkyCoord(9*u.arcsec, 9*u.arcsec+dec_offset)
     a = 6 # arcsec
     b = 3 # arcsec
     pa = 0*u.deg.to(u.rad) # rad
