@@ -96,10 +96,10 @@ def find_edges(fluxes, num_edge_chan):
     l_edge = 0
     r_edge = len(fluxes)-1
 
-    while fluxes[l_edge] == 0 and l_edge < len(fluxes):
+    while l_edge < len(fluxes)-1 and fluxes[l_edge] == 0:
         l_edge += 1
 
-    while fluxes[r_edge] == 0 and r_edge > 0:
+    while r_edge > 0 and fluxes[r_edge] == 0:
         r_edge -= 1
 
     return l_edge + num_edge_chan, r_edge - num_edge_chan
@@ -189,23 +189,24 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     """
     if plot_weight_path:
         print ("getting spectrum for source " + str(src))
-    pix = w.wcs_world2pix(src['ra'], src['dec'], 0, 0, 1)
+    has_stokes = len(image.shape) > 3
+    pix = w.wcs_world2pix(src['ra'], src['dec'], 0, 0, 1) if has_stokes else w.wcs_world2pix(src['ra'], src['dec'], 0, 1)
     x_coord = int(np.round(pix[0])) - 1  # 266
     y_coord = int(np.round(pix[1])) - 1  # 197
     if not radius:
         radius = math.ceil(src['a'])
     #print("Translated %.4f, %.4f to %d, %d" % (
     #    src['ra'], src['dec'], x_coord, y_coord))
-    print (w)
+    #print (w)
     y_min = y_coord - radius
     y_max = y_coord + radius
     x_min = x_coord - radius
     x_max = x_coord + radius
-    data = np.copy(image[0, :, y_min:y_max+1, x_min:x_max+1])
+    data = np.copy(image[0, :, y_min:y_max+1, x_min:x_max+1]) if has_stokes else np.copy(image[:, y_min:y_max+1, x_min:x_max+1])
     if plot_weight_path:
         # non wcs plot
         fig, ax = plt.subplots(1, 1, figsize=(9, 3))
-        ax.imshow(np.sum(data, axis=0), origin='lower')
+        ax.imshow(np.nansum(data, axis=0), origin='lower')
         plt.title(src['comp_name'])
         fname = plot_weight_path + '/'+ src['comp_name'] + '_data.png'
         print ('Plotting data to ' + fname) 
@@ -214,7 +215,10 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
 
         # wcs plot
         plt.subplot(projection=w.celestial)
-        plt.imshow(image[0,10,:,:], origin='lower')
+        if has_stokes:
+            plt.imshow(image[0,10,:,:], origin='lower')
+        else:
+            plt.imshow(image[10,:,:], origin='lower')
         plt.grid(color='white', ls='solid')
         fname = plot_weight_path + '/'+ src['comp_name'] + '_image_wcs.png'
         print ('Plotting data to ' + fname) 
@@ -228,7 +232,7 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     outside_pixels = 0
     for x in range(x_min, x_max+1):
         for y in range(y_min, y_max+1):
-            eq_pos = w.wcs_pix2world(x, y, 0, 0, 0)
+            eq_pos = w.wcs_pix2world(x, y, 0, 0, 0) if has_stokes else w.wcs_pix2world(x, y, 0, 0)
             point = SkyCoord(eq_pos[0], eq_pos[1], frame='icrs', unit="deg")
             in_ellipse = point_in_ellipse(origin, point, src['a'], src['b'], pa_rad)
             if not in_ellipse:
