@@ -2,13 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel):
+def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel, verbose=False):
     """
     Calculate the mean of the continuum values. This is based on precalculated regions where there is no gas expected.
     :param velocity: The velocity values of the spectrum to be analysed (in m/s).
     :param flux: The flux values of the spectrum to be analysed.
     :param continuum_start_vel: The lower bound of the continuum velocity range (in m/s)
     :param continuum_end_vel: The upper bound of the continuum velocity range (in m/s)
+    :param verbose: If True, log details of the calculation.
     :return: A pair of float which is the mean continuum flux and the standard deviation of the optical depth.
     """
 
@@ -20,8 +21,9 @@ def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel):
     continuum_range = np.where(velocity < continuum_end_vel)
     bin_end = continuum_range[0][-1]
 
-    print("Using bins %d to %d (velocity range %d to %d) out of %d" % (
-        bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(velocity)))
+    if verbose:
+        print("Using bins %d to %d (velocity range %d to %d) out of %d" % (
+            bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(velocity)))
     continuum_sample = flux[bin_start:bin_end+1]
     # print ("...gave sample of", continuum_sample)
     mean_cont = np.mean(continuum_sample)
@@ -29,7 +31,7 @@ def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel):
     return mean_cont, sd_cont
 
 
-def plot_absorption_spectrum(velocity, optical_depth, filename, title, con_start_vel, con_end_vel, sigma_tau, range=None):
+def plot_absorption_spectrum(velocity, optical_depth, filename, title, con_start_vel, con_end_vel, sigma_tau, range=None, figure=None):
     """
     Output a plot of opacity vs LSR velocity to a specified file.
 
@@ -40,8 +42,11 @@ def plot_absorption_spectrum(velocity, optical_depth, filename, title, con_start
     :param title: The title for the plot
     :param con_start_vel: The minimum velocity that the continuum was measured at.
     :param con_end_vel: The maximum velocity that the continuum was measured at.
+    :param sigma_tau: The absorption noise level for each channel - will be plotted as an envelope (optional)
+    :param range: The velocity range to be plotted, or None to plot the whole velocity range (default)
+    :param figure: Figure to be used for the plot, or None if a new figure is to be created (default)
     """
-    fig = plt.figure(figsize=(8, 4.8))
+    fig = figure if figure else plt.figure(figsize=(8, 4.8))
     plt.plot(velocity/1000, optical_depth, lw=1)
     if range:
         plt.xlim(range)
