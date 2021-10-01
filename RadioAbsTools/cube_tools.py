@@ -9,6 +9,8 @@ from matplotlib.patches import Ellipse, Rectangle
 import numpy as np
 import numpy.core.records as rec
 
+_allowed_weights = ['square', 'linear', 'none']
+
 
 class IslandRange(object):
     def __init__(self, isle_id):
@@ -105,19 +107,27 @@ def find_edges(fluxes, num_edge_chan):
     return l_edge + num_edge_chan, r_edge - num_edge_chan
 
 
-def get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel):
+def get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel, weighting='square'):
     """
     Calculate the mean of the continuum values. This is based on precalculated regions where there is no gas expected.
     :param data: A cubelet to be analysed, should be a 3D array of flux values.
     :param velocities: A numpy array of velocity values in m/s
     :param continuum_start_vel: The lower bound of the continuum velocity range (in m/s)
     :param continuum_end_vel: The upper bound of the continuum velocity range (in m/s)
+    :param weighting: The weighting scheme to use, one of square, linear, none
     :return: A 2D array of weighting values for the
     """
+
+    if (continuum_start_vel > np.max(velocities)) or (continuum_end_vel < np.min(velocities)):
+        raise Exception("Continuum range {} to {} is outside of the data velocity range {} to {}".format(
+            continuum_start_vel, continuum_end_vel, np.min(velocities), np.max(velocities)))
 
     continuum_range = np.where(continuum_start_vel < velocities)
     if len(continuum_range) == 0:
         return np.zeros(data.shape[1:2])
+
+    if weighting not in _allowed_weights:
+        raise Exception("Weighting must by one of ", ', '.join(_allowed_weights))
 
     bin_start = continuum_range[0][0]
     continuum_range = np.where(velocities < continuum_end_vel)
@@ -126,14 +136,25 @@ def get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel
     # print("Using bins %d to %d (velocity range %d to %d) out of %d" % (
     #    bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(velocities)))
     # print(data.shape)
-    continuum_sample = data[bin_start:bin_end, :, :]
+    continuum_sample = np.array(data[bin_start:bin_end, :, :])
+    continuum_sample[continuum_sample<0]=0
+
     # print ("...gave sample of", continuum_sample)
     mean_cont = np.nanmean(continuum_sample, axis=0)
-    mean_sq = mean_cont ** 2
-    sum_sq = np.sum(mean_sq)
-    weighting = mean_sq / sum_sq
+    mean_cont[mean_cont<0]=0
+    if weighting == 'square':
+        mean_sq = mean_cont ** 2
+        sum_sq = np.nansum(mean_sq)
+        weights = mean_sq / sum_sq
+    elif weighting == 'linear':
+        weights = mean_cont / np.nansum(mean_cont)
+    else:
+        # No weights, just trim to ellipse
+        weights = mean_cont
+        weights[weights>0]=1
+        weights = weights/np.sum(weights)
     # print("Got weighting of {} from {} and {}".format(weighting, mean_sq, sum_sq))
-    return weighting
+    return weights
 
 
 def point_in_ellipse(origin, point, a, b, pa_rad, verbose=False):
@@ -173,7 +194,8 @@ def point_in_ellipse(origin, point, a, b, pa_rad, verbose=False):
     return round(dist,3) <= 1.0
 
 
-def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, continuum_end_vel, radius=None, plot_weight_path=None):
+def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, continuum_end_vel, radius=None, 
+                            plot_weight_path=None, weighting='square'):
     """
     Calculate the integrated spectrum of the component.
     :param image: The image's data array
@@ -185,8 +207,13 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     :param radius: The radius of the box around the source centre where data will be checked for membership of the 
         source ellipse. Default is to use the semi-major axis of the source.
     :param plot_weight_path: The path to which diagnostic plots are output. Default is not to output plots.
+    :param weighting: The weighting scheme to use, one of square, linear, none
     :return: An array of average flux/pixel across the component at each velocity step
     """
+
+    if weighting not in _allowed_weights:
+        raise Exception("Weighting must by one of ", ', '.join(_allowed_weights))
+
     if plot_weight_path:
         print ("getting spectrum for source " + str(src))
     has_stokes = len(image.shape) > 3
@@ -244,8 +271,8 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     #                                                                   src['comp_name'],
     #                                                                   point.galactic.l.degree,
     #                                                                   point.galactic.b.degree))
-    weighting = get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel)
-    integrated = np.sum(data * weighting, axis=(1, 2))
+    weights = get_weighting_array(data, velocities, continuum_start_vel, continuum_end_vel, weighting=weighting)
+    integrated = np.nansum(data * weights, axis=(1, 2))
     inside_pixels = total_pixels - outside_pixels
     if inside_pixels <= 0:
         print ("Error: No data for component!")
@@ -254,7 +281,8 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
 
     if plot_weight_path:
         fig, ax = plt.subplots(1, 1, figsize=(9, 3))
-        ax.imshow(weighting, origin='lower')
+        pos = ax.imshow(weights, origin='lower')
+        fig.colorbar(pos, ax=ax)
         plt.title(src['comp_name'])
         fname = plot_weight_path + '/'+ src['comp_name'] + '_weights.png'
         print ('Plotting weights to ' + fname) 
