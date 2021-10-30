@@ -225,10 +225,10 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
     #print("Translated %.4f, %.4f to %d, %d" % (
     #    src['ra'], src['dec'], x_coord, y_coord))
     #print (w)
-    y_min = y_coord - radius
-    y_max = y_coord + radius
-    x_min = x_coord - radius
-    x_max = x_coord + radius
+    y_min = max(0,y_coord - radius)
+    y_max = min(image.shape[-2]-1, y_coord + radius)
+    x_min = max(0,x_coord - radius)
+    x_max = min(image.shape[-1]-1, x_coord + radius)
     data = np.copy(image[0, :, y_min:y_max+1, x_min:x_max+1]) if has_stokes else np.copy(image[:, y_min:y_max+1, x_min:x_max+1])
     if plot_weight_path:
         # non wcs plot
@@ -248,7 +248,7 @@ def get_integrated_spectrum(image, w, src, velocities, continuum_start_vel, cont
             plt.imshow(image[10,:,:], origin='lower')
         plt.grid(color='white', ls='solid')
         fname = plot_weight_path + '/'+ src['comp_name'] + '_image_wcs.png'
-        print ('Plotting data to ' + fname) 
+        print ('Plotting image wcs to ' + fname) 
         plt.savefig(fname, bbox_inches='tight')
         plt.close()
 
