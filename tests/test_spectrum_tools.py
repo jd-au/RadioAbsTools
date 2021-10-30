@@ -51,3 +51,33 @@ def test_get_mean_continuum():
     assert mean == 5
     assert std == 0
 
+
+def test_get_mean_continuum_reversed():
+    velocity = np.linspace(9, 0, 10)
+    flux = np.ones((10))*5
+    print (velocity, flux)
+    mean, std = spectrum_tools.get_mean_continuum(velocity, flux, 0, 5)
+    assert mean == 5
+    assert std == 0
+
+    # Check values above range are not included
+    flux[:5] = 5000
+    mean, std = spectrum_tools.get_mean_continuum(velocity, flux, 0, 5)
+    assert mean == 5
+    assert std == 0
+
+    # Check values below range are not included
+    flux[-1] = 5000
+    mean, std = spectrum_tools.get_mean_continuum(velocity, flux, 0, 5)
+    assert mean == 5
+    assert std == 0
+
+    # Check values within range are included
+    flux[-2] = 45
+    mean, std = spectrum_tools.get_mean_continuum(velocity, flux, 0, 5)
+    assert mean == 15
+    assert std == np.std(np.array([45,5,5,5])/15)
+    mean, std = spectrum_tools.get_mean_continuum(velocity, flux, 1, 5)
+    assert mean == 5
+    assert std == 0
+

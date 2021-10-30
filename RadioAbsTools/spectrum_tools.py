@@ -13,18 +13,11 @@ def get_mean_continuum(velocity, flux, continuum_start_vel, continuum_end_vel, v
     :return: A pair of float which is the mean continuum flux and the standard deviation of the optical depth.
     """
 
-    continuum_range = np.where(continuum_start_vel < velocity)
-    if len(continuum_range) ==0:
+    vel_filt = (continuum_start_vel < velocity) & (continuum_end_vel > velocity)
+    if np.sum(vel_filt) ==0:
         return None, None
 
-    bin_start = continuum_range[0][0]
-    continuum_range = np.where(velocity < continuum_end_vel)
-    bin_end = continuum_range[0][-1]
-
-    if verbose:
-        print("Using bins %d to %d (velocity range %d to %d) out of %d" % (
-            bin_start, bin_end, continuum_start_vel, continuum_end_vel, len(velocity)))
-    continuum_sample = flux[bin_start:bin_end+1]
+    continuum_sample = flux[vel_filt]
     # print ("...gave sample of", continuum_sample)
     mean_cont = np.mean(continuum_sample)
     sd_cont = np.std(continuum_sample/mean_cont)
